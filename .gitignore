@@ -1,0 +1,49 @@
+### Gradle / Java
+/.gradle/
+/build/
+/out/
+**/build/
+**/out/
+*.class
+*.jar
+*.war
+*.ear
+
+# IntelliJ
+*.iml
+.idea/
+.idea/**
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+/tmp/
+*.tmp
+
+# Generated sources
+/generated/
+**/generated/
+
+# Spring Boot devtools restart folder
+.restart/
+
+# Gradle wrapper cache (do not ignore wrapper itself)
+.gradle-cache/
+
+# Environment variables
+.env
+
+# Test result directories
+/test-results/
+reports/
