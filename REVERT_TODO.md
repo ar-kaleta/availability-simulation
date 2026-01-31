@@ -32,10 +32,10 @@ Checklist (iterative - run build after each numbered step)
     - [x] Add unit tests for this logic (mocking Repository).
 
 6) Implement REST Controller
-   - [ ] Create `AvailabilityController`.
-   - [ ] Implement `GET /availability` endpoint taking flight details as params.
-   - [ ] Call `AvailabilityService`.
-   - [ ] Run `./gradlew clean build`.
+    - [x] Create `AvailabilityController`.
+    - [x] Implement `GET /availability` endpoint taking flight details as params.
+    - [x] Call `AvailabilityService`.
+    - [x] Run `./gradlew clean build`.
 
 7) Kafka Consumer (Write/Update Path)
    - [ ] Implement `AvailabilityConsumer` to listen for inventory updates (e.g., "Seats Sold", "Flight Cancelled") from external systems.
