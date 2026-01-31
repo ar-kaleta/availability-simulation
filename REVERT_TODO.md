@@ -24,12 +24,12 @@ Checklist (iterative - run build after each numbered step)
     - [x] This ensures the "Cache Miss -> DB Hit" path has data to return.
 
 5) Implement Read-Through Cache Logic
-   - [ ] Refactor `AvailabilityCache` or create `AvailabilityService` to implement the Read-Through pattern:
+    - [x] Refactor `AvailabilityCache` or create `AvailabilityService` to implement the Read-Through pattern:
      - 1. Check Caffeine/Memory Cache.
      - 2. If miss, query `FlightRepository` (DB).
      - 3. If found in DB, populate Cache and return.
      - 4. If missing in DB, return empty/error.
-   - [ ] Add unit tests for this logic (mocking Repository).
+    - [x] Add unit tests for this logic (mocking Repository).
 
 6) Implement REST Controller
    - [ ] Create `AvailabilityController`.
