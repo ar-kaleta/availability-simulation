@@ -18,9 +18,10 @@ Checklist (iterative - run build after each numbered step)
    - [x] Add `FlightRepository` (JPA) to access the database.
 
 4) Database Seeder (Initial Population)
-   - [ ] Create `DatabaseSeeder` service that runs on startup.
-   - [ ] Populate the `Flight` table with a large set of mock flights (e.g., 10,000 flights) and initial availability strings.
-   - [ ] This ensures the "Cache Miss -> DB Hit" path has data to return.
+    - [x] Create `DatabaseSeeder` service that runs on startup.
+    - [x] Populate the `Flight` table with a large set of mock flights (e.g., 10,000 flights) and initial availability
+      strings.
+    - [x] This ensures the "Cache Miss -> DB Hit" path has data to return.
 
 5) Implement Read-Through Cache Logic
    - [ ] Refactor `AvailabilityCache` or create `AvailabilityService` to implement the Read-Through pattern:
