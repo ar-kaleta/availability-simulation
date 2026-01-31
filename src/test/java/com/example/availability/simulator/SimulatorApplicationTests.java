@@ -9,5 +9,4 @@ class SimulatorApplicationTests {
 	@Test
 	void contextLoads() {
 	}
-
 }

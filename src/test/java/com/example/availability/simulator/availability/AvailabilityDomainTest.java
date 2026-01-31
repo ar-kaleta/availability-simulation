@@ -2,7 +2,7 @@ package com.example.availability.simulator.availability;
 
 import org.junit.jupiter.api.Test;
 import java.time.Instant;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -10,23 +10,32 @@ class AvailabilityDomainTest {
 
     @Test
     void flightDateKey_validatesInput() {
-        LocalDate date = LocalDate.now();
-        assertThrows(IllegalArgumentException.class, () -> new FlightDateKey(null, date, "JFK", "LHR"));
-        assertThrows(IllegalArgumentException.class, () -> new FlightDateKey("", date, "JFK", "LHR"));
-        assertThrows(IllegalArgumentException.class, () -> new FlightDateKey("FL123", null, "JFK", "LHR"));
-        assertThrows(IllegalArgumentException.class, () -> new FlightDateKey("FL123", date, null, "LHR"));
-        assertThrows(IllegalArgumentException.class, () -> new FlightDateKey("FL123", date, "JFK", ""));
+        LocalDateTime dep = LocalDateTime.now();
+        LocalDateTime arr = dep.plusHours(2);
         
-        FlightDateKey key = new FlightDateKey("FL123", date, "JFK", "LHR");
-        assertEquals("FL123", key.flightNumber());
-        assertEquals(date, key.date());
+        assertThrows(IllegalArgumentException.class, () -> new FlightDateKey(null, "JFK", "LHR", dep, arr));
+        assertThrows(IllegalArgumentException.class, () -> new FlightDateKey(-1, "JFK", "LHR", dep, arr));
+        assertThrows(IllegalArgumentException.class, () -> new FlightDateKey(123, null, "LHR", dep, arr));
+        assertThrows(IllegalArgumentException.class, () -> new FlightDateKey(123, "JFK", null, dep, arr));
+        assertThrows(IllegalArgumentException.class, () -> new FlightDateKey(123, "", "LHR", dep, arr));
+        assertThrows(IllegalArgumentException.class, () -> new FlightDateKey(123, "JFK", "", dep, arr));
+        assertThrows(IllegalArgumentException.class, () -> new FlightDateKey(123, "JFK", "LHR", null, arr));
+        assertThrows(IllegalArgumentException.class, () -> new FlightDateKey(123, "JFK", "LHR", dep, null));
+        
+        FlightDateKey key = new FlightDateKey(123, "JFK", "LHR", dep, arr);
+        assertEquals(123, key.flightNumber());
         assertEquals("JFK", key.origin());
         assertEquals("LHR", key.destination());
+        assertEquals(dep, key.departureDateTime());
+        assertEquals(arr, key.arrivalDateTime());
     }
 
     @Test
     void availability_validatesInput() {
-        FlightDateKey key = new FlightDateKey("FL123", LocalDate.now(), "JFK", "LHR");
+        LocalDateTime dep = LocalDateTime.now();
+        LocalDateTime arr = dep.plusHours(2);
+        FlightDateKey key = new FlightDateKey(123, "JFK", "LHR", dep, arr);
+        
         assertThrows(IllegalArgumentException.class, () -> new Availability(null, "F9"));
         assertThrows(IllegalArgumentException.class, () -> new Availability(key, null));
 
@@ -37,7 +46,9 @@ class AvailabilityDomainTest {
 
     @Test
     void availabilityEvent_validatesInput() {
-        FlightDateKey key = new FlightDateKey("FL123", LocalDate.now(), "JFK", "LHR");
+        LocalDateTime dep = LocalDateTime.now();
+        LocalDateTime arr = dep.plusHours(2);
+        FlightDateKey key = new FlightDateKey(123, "JFK", "LHR", dep, arr);
         Instant now = Instant.now();
         
         assertThrows(IllegalArgumentException.class, () -> new AvailabilityEvent(null, 1, "F9", now));
@@ -53,9 +64,10 @@ class AvailabilityDomainTest {
     
     @Test
     void valueSemantics() {
-        LocalDate date = LocalDate.of(2023, 10, 27);
-        FlightDateKey key1 = new FlightDateKey("FL123", date, "JFK", "LHR");
-        FlightDateKey key2 = new FlightDateKey("FL123", date, "JFK", "LHR");
+        LocalDateTime dep = LocalDateTime.of(2023, 10, 27, 10, 0);
+        LocalDateTime arr = dep.plusHours(2);
+        FlightDateKey key1 = new FlightDateKey(123, "JFK", "LHR", dep, arr);
+        FlightDateKey key2 = new FlightDateKey(123, "JFK", "LHR", dep, arr);
         
         assertEquals(key1, key2);
         assertEquals(key1.hashCode(), key2.hashCode());

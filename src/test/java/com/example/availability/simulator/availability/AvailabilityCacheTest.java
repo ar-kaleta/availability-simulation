@@ -4,7 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -17,7 +17,9 @@ class AvailabilityCacheTest {
     @BeforeEach
     void setUp() {
         cache = new AvailabilityCache();
-        key = new FlightDateKey("FL100", LocalDate.now(), "JFK", "LHR");
+        LocalDateTime dep = LocalDateTime.now();
+        LocalDateTime arr = dep.plusHours(2);
+        key = new FlightDateKey(100, "JFK", "LHR", dep, arr);
     }
 
     @Test
