@@ -17,7 +17,7 @@ class AvailabilityCacheTest {
     @BeforeEach
     void setUp() {
         cache = new AvailabilityCache();
-        key = new FlightDateKey("FL100", LocalDate.now());
+        key = new FlightDateKey("FL100", LocalDate.now(), "JFK", "LHR");
     }
 
     @Test
@@ -28,47 +28,37 @@ class AvailabilityCacheTest {
 
     @Test
     void updateAvailability_createsNewEntry() {
-        AvailabilityEvent event = new AvailabilityEvent(key, 1L, 10, Instant.now());
+        AvailabilityEvent event = new AvailabilityEvent(key, 1L, "F9 J9 Y9", Instant.now());
         cache.updateAvailability(event);
 
         Optional<Availability> result = cache.getAvailability(key);
         assertTrue(result.isPresent());
-        assertEquals(10, result.get().availableSeats());
+        assertEquals("F9 J9 Y9", result.get().availabilityString());
     }
 
     @Test
-    void updateAvailability_appliesDelta() {
+    void updateAvailability_updatesEntry() {
         // Initial state
-        cache.updateAvailability(new AvailabilityEvent(key, 1L, 10, Instant.now()));
+        cache.updateAvailability(new AvailabilityEvent(key, 1L, "F9 J9 Y9", Instant.now()));
 
-        // Apply delta
-        cache.updateAvailability(new AvailabilityEvent(key, 2L, -3, Instant.now()));
+        // Update state
+        cache.updateAvailability(new AvailabilityEvent(key, 2L, "F5 J2 Y0", Instant.now()));
 
         Optional<Availability> result = cache.getAvailability(key);
         assertTrue(result.isPresent());
-        assertEquals(7, result.get().availableSeats());
+        assertEquals("F5 J2 Y0", result.get().availabilityString());
     }
 
     @Test
     void updateAvailability_ignoresDuplicateOrOlderSequence() {
-        cache.updateAvailability(new AvailabilityEvent(key, 2L, 10, Instant.now()));
+        cache.updateAvailability(new AvailabilityEvent(key, 2L, "F5", Instant.now()));
 
         // Try to apply older sequence
-        cache.updateAvailability(new AvailabilityEvent(key, 1L, 5, Instant.now()));
+        cache.updateAvailability(new AvailabilityEvent(key, 1L, "F9", Instant.now()));
         
         // Try to apply same sequence
-        cache.updateAvailability(new AvailabilityEvent(key, 2L, 5, Instant.now()));
+        cache.updateAvailability(new AvailabilityEvent(key, 2L, "F9", Instant.now()));
 
-        assertEquals(10, cache.getAvailability(key).orElseThrow().availableSeats());
-    }
-
-    @Test
-    void updateAvailability_ensuresNonNegativeSeats() {
-        cache.updateAvailability(new AvailabilityEvent(key, 1L, 5, Instant.now()));
-        
-        // Apply large negative delta
-        cache.updateAvailability(new AvailabilityEvent(key, 2L, -10, Instant.now()));
-
-        assertEquals(0, cache.getAvailability(key).orElseThrow().availableSeats());
+        assertEquals("F5", cache.getAvailability(key).orElseThrow().availabilityString());
     }
 }
