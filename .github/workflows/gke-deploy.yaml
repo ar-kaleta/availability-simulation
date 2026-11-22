@@ -83,24 +83,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-      - name: Tag image with gcloud (fallback)
-        if: always()
-        run: |
-          # Get the latest image digest from the build output
-          IMAGE="us-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.IMAGE_NAME }}"
-
-          # List all images and tag the most recent one
-          LATEST_DIGEST=$(gcloud artifacts docker images list "$IMAGE" \
-            --format="value(DIGEST)" --sort-by=~CREATE_TIME | head -1)
-
-          if [ -n "$LATEST_DIGEST" ]; then
-            echo "Tagging $LATEST_DIGEST"
-            gcloud artifacts docker tags add "${IMAGE}@${LATEST_DIGEST}" "${IMAGE}:latest" --quiet
-            gcloud artifacts docker tags add "${IMAGE}@${LATEST_DIGEST}" "${IMAGE}:main" --quiet
-            gcloud artifacts docker tags add "${IMAGE}@${LATEST_DIGEST}" "${IMAGE}:${GITHUB_SHA::7}" --quiet
-          else
-            echo "No images found to tag"
-          fi
 
   deploy:
     name: Deploy to GKE
