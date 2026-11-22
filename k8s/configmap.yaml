@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: availability-simulation-config
+  labels:
+    app: availability-simulation
+data:
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "my-kafka-kafka-bootstrap.kafka.svc.cluster.local:9092"
+  SIMULATOR_INVENTORY_INTERVAL_MS: "5000"
+  SIMULATOR_INVENTORY_BATCH_SIZE: "5"
+  SIMULATOR_TRAFFIC_ENABLED: "false"
+  SIMULATOR_TRAFFIC_INTERVAL_MS: "1000"
+  SIMULATOR_TRAFFIC_REQUEST_COUNT: "10"

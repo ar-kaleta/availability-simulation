@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: availability-simulation-ingress
+  labels:
+    app: availability-simulation
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "availability-simulation-ip"
+    networking.gke.io/managed-certificates: "availability-simulation-cert"
+spec:
+  rules:
+    - host: availability.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: availability-simulation
+                port:
+                  number: 80
