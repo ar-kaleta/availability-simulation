@@ -18,37 +18,37 @@ Checklist (iterative - run build after each numbered step)
    - [x] Add `FlightRepository` (JPA) to access the database.
 
 4) Database Seeder (Initial Population)
-    - [x] Create `DatabaseSeeder` service that runs on startup.
-    - [x] Populate the `Flight` table with a large set of mock flights (e.g., 10,000 flights) and initial availability
-      strings.
-    - [x] This ensures the "Cache Miss -> DB Hit" path has data to return.
+   - [x] Create `DatabaseSeeder` service that runs on startup.
+   - [x] Populate the `Flight` table with a large set of mock flights (e.g., 10,000 flights) and initial availability strings.
+   - [x] This ensures the "Cache Miss -> DB Hit" path has data to return.
 
 5) Implement Read-Through Cache Logic
-    - [x] Refactor `AvailabilityCache` or create `AvailabilityService` to implement the Read-Through pattern:
+   - [x] Refactor `AvailabilityCache` or create `AvailabilityService` to implement the Read-Through pattern:
      - 1. Check Caffeine/Memory Cache.
      - 2. If miss, query `FlightRepository` (DB).
      - 3. If found in DB, populate Cache and return.
      - 4. If missing in DB, return empty/error.
-    - [x] Add unit tests for this logic (mocking Repository).
+   - [x] Add unit tests for this logic (mocking Repository).
 
 6) Implement REST Controller
-    - [x] Create `AvailabilityController`.
-    - [x] Implement `GET /availability` endpoint taking flight details as params.
-    - [x] Call `AvailabilityService`.
-    - [x] Run `./gradlew clean build`.
+   - [x] Create `AvailabilityController`.
+   - [x] Implement `GET /availability` endpoint taking flight details as params.
+   - [x] Call `AvailabilityService`.
+   - [x] Run `./gradlew clean build`.
 
 7) Kafka Consumer (Write/Update Path)
-   - [ ] Implement `AvailabilityConsumer` to listen for inventory updates (e.g., "Seats Sold", "Flight Cancelled") from external systems.
-   - [ ] On event: 
+   - [x] Implement `AvailabilityConsumer` to listen for inventory updates (e.g., "Seats Sold", "Flight Cancelled") from external systems.
+   - [x] On event: 
      - 1. Update Database (System of Record).
      - 2. Update/Invalidate Cache (Near Real-Time consistency).
-   - [ ] This separates the heavy read path (REST) from the write path (Kafka).
+   - [x] This separates the heavy read path (REST) from the write path (Kafka).
 
 8) Availability Simulator (Inventory Producer)
-   - [ ] Create `InventorySimulator` service.
-   - [ ] Periodically (or randomly) generate `AvailabilityEvent`s (e.g., changing "F9" to "F8").
-   - [ ] Publish these events to the Kafka topic.
-   - [ ] This simulates the dynamic nature of a GDS.
+   - [x] Create `InventorySimulator` service with configurable interval and batch size.
+   - [x] Periodically generate `AvailabilityEvent`s with realistic seat decrements (e.g., "F9" to "F8").
+   - [x] Publish these events to the Kafka topic as JSON strings.
+   - [x] This simulates the dynamic nature of a GDS.
+   - [x] Add unit tests for event production and seat decrement logic.
 
 9) Traffic Simulator (Mock Player)
    - [ ] Create `TrafficGenerator` component.
@@ -63,8 +63,8 @@ Checklist (iterative - run build after each numbered step)
       - Kafka Consumer Lag.
 
 11) Integration Testing
-    - [ ] Add integration tests spinning up the full context (H2/Postgres + Kafka).
-    - [ ] Verify the flow: Update via Kafka -> Check via REST.
+    - [x] Add integration tests spinning up the full context (H2/Postgres + Kafka).
+    - [x] Verify the flow: Update via Kafka -> Check via REST.
 
 12) Documentation
     - [ ] Update README with instructions on how to run the simulator and view metrics.
