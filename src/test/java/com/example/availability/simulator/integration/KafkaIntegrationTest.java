@@ -27,7 +27,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.kafka.consumer.auto-offset-reset=earliest",
         "spring.kafka.consumer.group-id=test-integration-group",
         "simulator.inventory.interval-ms=999999999",
-        "simulator.inventory.initial-delay-ms=999999999"
+        "simulator.inventory.initial-delay-ms=999999999",
+        "simulator.traffic.enabled=false"
     }
 )
 @AutoConfigureMockMvc
