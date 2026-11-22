@@ -95,9 +95,9 @@ jobs:
 
           if [ -n "$LATEST_DIGEST" ]; then
             echo "Tagging $LATEST_DIGEST"
-            gcloud artifacts docker tags add "${IMAGE}@${LATEST_DIGEST}" --tag latest --quiet
-            gcloud artifacts docker tags add "${IMAGE}@${LATEST_DIGEST}" --tag main --quiet
-            gcloud artifacts docker tags add "${IMAGE}@${LATEST_DIGEST}" --tag "${GITHUB_SHA::7}" --quiet
+            gcloud artifacts docker tags add "${IMAGE}@${LATEST_DIGEST}" "${IMAGE}:latest" --quiet
+            gcloud artifacts docker tags add "${IMAGE}@${LATEST_DIGEST}" "${IMAGE}:main" --quiet
+            gcloud artifacts docker tags add "${IMAGE}@${LATEST_DIGEST}" "${IMAGE}:${GITHUB_SHA::7}" --quiet
           else
             echo "No images found to tag"
           fi
