@@ -83,7 +83,7 @@ gcloud artifacts repositories create availability-simulation \
 
 ```bash
 # Create the PostgreSQL instance (takes ~5 minutes)
-gcloud sql instances create availability-db \
+gcloud sql instances create postgres-db \
   --database-version=POSTGRES_16 \
   --tier=db-f1-micro \
   --region=us-central1 \
@@ -92,24 +92,36 @@ gcloud sql instances create availability-db \
   --network=$(gcloud compute networks list --format="value(selfLink)" --filter="name=default")
 
 # Create the database
-gcloud sql databases create availability --instance=availability-db
+gcloud sql databases create availability --instance=postgres-db
 
 # Create a dedicated user
-gcloud sql users set-password myuser --instance=availability-db --password=changeme-user-password
+gcloud sql users set-password myuser --instance=postgres-db --password=changeme-user-password
 ```
 
-The deployment uses the **Cloud SQL Auth Proxy** as a sidecar container, so the app connects via `127.0.0.1:5432` — no public IP or VPC peering is needed. The proxy authenticates using the GKE pod's service account with IAM authentication (`--auto-iam-authn`).
+The deployment uses the **Cloud SQL Auth Proxy** as a sidecar container, so the app connects via `127.0.0.1:5432`. The proxy authenticates with a dedicated service account key (not `--auto-iam-authn` alone), because GKE clusters created with restricted OAuth scopes cannot use Application Default Credentials for Cloud SQL.
 
-**Grant the GKE service account access to Cloud SQL:**
+**Create a service account for the Cloud SQL Auth Proxy:**
 
 ```bash
-# Get the GKE node pool service account
-GKE_SA=$(gcloud compute instances list --filter="name~gke-availability" --format="value(serviceAccounts.email)" --limit=1)
+# Create a dedicated service account
+gcloud iam service-accounts create cloud-sql-proxy-sa \
+  --display-name="Cloud SQL Auth Proxy"
 
 # Grant Cloud SQL client access
 gcloud projects add-iam-policy-binding $(gcloud config get-value project) \
-  --member="serviceAccount:${GKE_SA}" \
+  --member="serviceAccount:cloud-sql-proxy-sa@$(gcloud config get-value project).iam.gserviceaccount.com" \
   --role="roles/cloudsql.client"
+
+# Generate a key and create the Kubernetes secret
+gcloud iam service-accounts keys create /tmp/cloud-sql-proxy-key.json \
+  --iam-account=cloud-sql-proxy-sa@$(gcloud config get-value project).iam.gserviceaccount.com
+
+kubectl create secret generic cloud-sql-proxy-credentials \
+  --from-file=credentials.json=/tmp/cloud-sql-proxy-key.json \
+  -n default
+
+# Clean up the local key file
+rm /tmp/cloud-sql-proxy-key.json
 ```
 
 **Option B: External PostgreSQL** — Use your existing PostgreSQL instance and update the secret and Cloud SQL Auth Proxy args accordingly.
@@ -185,8 +197,8 @@ metadata:
     strimzi.io/node-pools: enabled
 spec:
   kafka:
-    version: 4.0.0
-    metadataVersion: "4.0"
+    version: 4.2.0
+    metadataVersion: "4.2"
     listeners:
       - name: plain
         port: 9092
@@ -249,8 +261,8 @@ metadata:
     strimzi.io/node-pools: enabled
 spec:
   kafka:
-    version: 4.0.0
-    metadataVersion: "4.0"
+    version: 4.2.0
+    metadataVersion: "4.2"
     listeners:
       - name: plain
         port: 9092
@@ -317,6 +329,14 @@ kubectl create secret generic availability-simulation-secret \
 
 Make sure to replace `changeme-user-password` with the password you set when creating the Cloud SQL user.
 
+**For first deployment only:** Set `ddl-auto=update` so the app creates the `flight` table automatically:
+
+```bash
+kubectl set env deployment/availability-simulation SPRING_JPA_HIBERNATE_DDL_AUTO=update
+```
+
+After the schema is created, you can switch back to `validate` for production safety.
+
 ## Configure Kafka Connection
 
 Update `k8s/configmap.yaml` with your Kafka bootstrap server:
@@ -343,6 +363,10 @@ sed -i.bak "s|gcr.io/PROJECT_ID/availability-simulation:latest|us-docker.pkg.dev
 # Apply all manifests
 kubectl apply -f k8s/configmap.yaml
 kubectl apply -f k8s/secret.yaml
+
+# For first deployment, set ddl-auto=update to create the schema automatically
+kubectl set env deployment/availability-simulation SPRING_JPA_HIBERNATE_DDL_AUTO=update
+
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
 kubectl apply -f k8s/hpa.yaml
