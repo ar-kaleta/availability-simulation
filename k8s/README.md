@@ -107,25 +107,70 @@ gcloud sql users create myuser --instance=postgres-db --password=secret
 
 **Option B: Strimzi on GKE**
 
-Install Strimzi via Helm (recommended) or by downloading the release ZIP.
+Install the Strimzi Cluster Operator via Helm (recommended) or by downloading the release ZIP, then create a Kafka cluster.
 
 **Helm method (simplest):**
-```bash
-# Add Strimzi Helm repository and install
-helm repo add strimzi https://strimzi.io/charts/
-helm repo update
-helm install strimzi strimzi/helm3-strimzi-kafka-operator -n kafka --create-namespace
 
-# Create a Kafka cluster (KRaft mode, no Zookeeper)
+> **Got a previous failed install?** If you see `INSTALLATION FAILED: unable to continue with install: ... exists`, clean up **all** Strimzi resources first:
+> ```bash
+> helm uninstall strimzi -n kafka 2>/dev/null
+> helm uninstall strimzi-cluster-operator -n kafka 2>/dev/null
+>
+> # Delete ALL Strimzi cluster-scoped resources by name (catches everything, including new roles)
+> kubectl get clusterroles -o name | grep strimzi | xargs -r kubectl delete --ignore-not-found
+> kubectl get clusterrolebindings -o name | grep strimzi | xargs -r kubectl delete --ignore-not-found
+>
+> # Delete all Strimzi namespace-scoped resources
+> kubectl delete all,serviceaccount,secret,configmap,role,rolebinding -l strimzi.io/cl=operator -n kafka --ignore-not-found 2>/dev/null || \
+>   kubectl delete all,serviceaccount,secret,configmap,role,rolebinding -l app=strimzi -n kafka --ignore-not-found
+> ```
+>
+> Strimzi creates many cluster-scoped resources (ClusterRoles/ClusterRoleBindings) that live outside the `kafka` namespace. Helm refuses to install when it finds existing resources without its ownership labels, so **all** of them must be deleted before reinstalling. Using `grep strimzi | xargs kubectl delete` dynamically finds and removes every Strimzi resource by name, so no new ClusterRole slips through.
+
+```bash
+# Install the Strimzi Cluster Operator from the OCI registry
+kubectl create namespace kafka --dry-run=client -o yaml | kubectl apply -f -
+helm install strimzi-cluster-operator oci://quay.io/strimzi-helm/strimzi-kafka-operator \
+  -n kafka \
+  --set watchAllNamespaces=true
+
+# Wait for the operator to be ready (CRDs are installed by the chart)
+kubectl rollout status deployment/strimzi-cluster-operator -n kafka
+
+# Create a Kafka NodePool (KRaft mode, combined controller + broker roles)
 cat <<EOF | kubectl apply -f -
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: my-kafka-pool-a
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: my-kafka
+spec:
+  replicas: 3
+  roles:
+    - controller
+    - broker
+  storage:
+    type: persistent-claim
+    size: 100Gi
+    deleteClaim: false
+EOF
+
+# Create the Kafka cluster with KRaft enabled
+cat <<EOF | kubectl apply -f -
+apiVersion: kafka.strimzi.io/v1
 kind: Kafka
 metadata:
   name: my-kafka
   namespace: kafka
+  annotations:
+    strimzi.io/kraft: enabled
+    strimzi.io/node-pools: enabled
 spec:
   kafka:
-    replicas: 3
+    version: 4.0.0
+    metadataVersion: "4.0"
     listeners:
       - name: plain
         port: 9092
@@ -135,13 +180,6 @@ spec:
       offsets.topic.replication.factor: 3
       transaction.state.log.replication.factor: 3
       transaction.state.log.min.isr: 2
-    storage:
-      type: jbod
-      volumes:
-        - id: 0
-          type: persistent-claim
-          size: 100Gi
-          deleteClaim: false
   entityOperator:
     topicOperator: {}
     userOperator: {}
@@ -160,16 +198,43 @@ cd strimzi-${VERSION}
 kubectl create namespace kafka
 kubectl create -f install/cluster-operator/ -n kafka
 
-# Create a Kafka cluster (same as above)
+# Wait for the operator to be ready
+kubectl rollout status deployment/strimzi-cluster-operator -n kafka
+
+# Create a Kafka NodePool (KRaft mode, combined controller + broker roles)
 cat <<EOF | kubectl apply -f -
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: my-kafka-pool-a
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: my-kafka
+spec:
+  replicas: 3
+  roles:
+    - controller
+    - broker
+  storage:
+    type: persistent-claim
+    size: 100Gi
+    deleteClaim: false
+EOF
+
+# Create the Kafka cluster with KRaft enabled
+cat <<EOF | kubectl apply -f -
+apiVersion: kafka.strimzi.io/v1
 kind: Kafka
 metadata:
   name: my-kafka
   namespace: kafka
+  annotations:
+    strimzi.io/kraft: enabled
+    strimzi.io/node-pools: enabled
 spec:
   kafka:
-    replicas: 3
+    version: 4.0.0
+    metadataVersion: "4.0"
     listeners:
       - name: plain
         port: 9092
@@ -179,18 +244,13 @@ spec:
       offsets.topic.replication.factor: 3
       transaction.state.log.replication.factor: 3
       transaction.state.log.min.isr: 2
-    storage:
-      type: jbod
-      volumes:
-        - id: 0
-          type: persistent-claim
-          size: 100Gi
-          deleteClaim: false
   entityOperator:
     topicOperator: {}
     userOperator: {}
 EOF
 ```
+
+> **Note:** Strimzi 1.x uses KRaft mode only (ZooKeeper was removed in Apache Kafka 4.x). The `KafkaNodePool` resource defines nodes with both `controller` and `broker` roles, and the `Kafka` resource requires `strimzi.io/kraft: enabled` and `strimzi.io/node-pools: enabled` annotations.
 
 After installation, the Kafka bootstrap server is available at:
 ```
@@ -233,9 +293,9 @@ Update `k8s/secret.yaml` with your actual database credentials, or create the se
 
 ```bash
 kubectl create secret generic availability-simulation-secret \
-  --from-literal=SPRING_DATASOURCE_URL='jdbc:postgresql:///<your-db-host>:5432/mydatabase' \
+  --from-literal=SPRING_DATASOURCE_URL='jdbc:postgresql:///availability-simulation:us-central1:postgres-db:5432/mydatabase' \
   --from-literal=SPRING_DATASOURCE_USERNAME='myuser' \
-  --from-literal=SPRING_DATASOURCE_PASSWORD='<your-password>' \
+  --from-literal=SPRING_DATASOURCE_PASSWORD='secret' \
   -n default
 ```
 
