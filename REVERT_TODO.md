@@ -51,9 +51,9 @@ Checklist (iterative - run build after each numbered step)
    - [x] Add unit tests for event production and seat decrement logic.
 
 9) Traffic Simulator (Mock Player)
-   - [ ] Create `TrafficGenerator` component.
-   - [ ] Generate random REST requests to the `AvailabilityController`.
-   - [ ] Log latency and throughput stats.
+   - [x] Create `TrafficGenerator` component.
+   - [x] Generate random REST requests to the `AvailabilityController`.
+   - [x] Log latency and throughput stats.
 
 10) Observability
     - [ ] Add Micrometer metrics for:
