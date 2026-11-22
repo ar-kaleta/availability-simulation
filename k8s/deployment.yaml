@@ -61,10 +61,15 @@ spec:
           args:
             - "--structured-logs"
             - "--auto-iam-authn"
+            - "--credentials-file=/secrets/cloud-sql-proxy/credentials.json"
             - "$(CLOUD_SQL_INSTANCE)"
           env:
             - name: CLOUD_SQL_INSTANCE
-              value: "PROJECT_ID:us-central1:availability-db"
+              value: "PROJECT_ID:us-central1:postgres-db"
+          volumeMounts:
+            - name: cloud-sql-proxy-creds
+              mountPath: /secrets/cloud-sql-proxy
+              readOnly: true
           securityContext:
             runAsNonRoot: true
           resources:
@@ -74,3 +79,7 @@ spec:
             limits:
               cpu: "500m"
               memory: "512Mi"
+      volumes:
+        - name: cloud-sql-proxy-creds
+          secret:
+            secretName: cloud-sql-proxy-credentials
