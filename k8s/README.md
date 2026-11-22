@@ -79,24 +79,40 @@ gcloud artifacts repositories create availability-simulation \
   --description="Docker images for availability-simulation"
 ```
 
-### 5. Set Up PostgreSQL
-
-**Option A: Cloud SQL (recommended for production)**
+### 5. Set Up Cloud SQL for PostgreSQL
 
 ```bash
-gcloud sql instances create postgres-db \
-  --database-version=POSTGRES_15 \
+# Create the PostgreSQL instance (takes ~5 minutes)
+gcloud sql instances create availability-db \
+  --database-version=POSTGRES_16 \
   --tier=db-f1-micro \
   --region=us-central1 \
-  --root-password=secret
+  --root-password=changeme-strong-password \
+  --no-assign-ip \
+  --network=$(gcloud compute networks list --format="value(selfLink)" --filter="name=default")
 
-gcloud sql databases create mydatabase --instance=postgres-db
+# Create the database
+gcloud sql databases create availability --instance=availability-db
 
-# Create a non-root user
-gcloud sql users create myuser --instance=postgres-db --password=secret
+# Create a dedicated user
+gcloud sql users set-password myuser --instance=availability-db --password=changeme-user-password
 ```
 
-**Option B: External PostgreSQL** — Use your existing PostgreSQL instance and update the secret accordingly.
+The deployment uses the **Cloud SQL Auth Proxy** as a sidecar container, so the app connects via `127.0.0.1:5432` — no public IP or VPC peering is needed. The proxy authenticates using the GKE pod's service account with IAM authentication (`--auto-iam-authn`).
+
+**Grant the GKE service account access to Cloud SQL:**
+
+```bash
+# Get the GKE node pool service account
+GKE_SA=$(gcloud compute instances list --filter="name~gke-availability" --format="value(serviceAccounts.email)" --limit=1)
+
+# Grant Cloud SQL client access
+gcloud projects add-iam-policy-binding $(gcloud config get-value project) \
+  --member="serviceAccount:${GKE_SA}" \
+  --role="roles/cloudsql.client"
+```
+
+**Option B: External PostgreSQL** — Use your existing PostgreSQL instance and update the secret and Cloud SQL Auth Proxy args accordingly.
 
 ### 6. Set Up Kafka
 
@@ -289,24 +305,17 @@ cat gke-sa-key.json
 
 ## Configure Kubernetes Secrets
 
-Update `k8s/secret.yaml` with your actual database credentials, or create the secret directly:
+With the Cloud SQL Auth Proxy sidecar, the app connects via `127.0.0.1:5432`. Create the secret with your Cloud SQL credentials:
 
 ```bash
 kubectl create secret generic availability-simulation-secret \
-  --from-literal=SPRING_DATASOURCE_URL='jdbc:postgresql:///availability-simulation:us-central1:postgres-db:5432/mydatabase' \
+  --from-literal=SPRING_DATASOURCE_URL='jdbc:postgresql://127.0.0.1:5432/availability' \
   --from-literal=SPRING_DATASOURCE_USERNAME='myuser' \
-  --from-literal=SPRING_DATASOURCE_PASSWORD='secret' \
+  --from-literal=SPRING_DATASOURCE_PASSWORD='changeme-user-password' \
   -n default
 ```
 
-For Cloud SQL, the URL format is:
-```
-jdbc:postgresql:///<CLOUD_SQL_CONNECTION_NAME>/mydatabase
-```
-with the Cloud SQL Socket Factory driver. For TCP access, use the private IP:
-```
-jdbc:postgresql://10.0.0.2:5432/mydatabase
-```
+Make sure to replace `changeme-user-password` with the password you set when creating the Cloud SQL user.
 
 ## Configure Kafka Connection
 
