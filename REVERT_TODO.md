@@ -56,15 +56,15 @@ Checklist (iterative - run build after each numbered step)
    - [x] Log latency and throughput stats.
 
 10) Observability
-    - [ ] Add Micrometer metrics for:
-      - Cache Hits/Misses.
-      - DB Read Latency.
-      - REST Request Latency.
-      - Kafka Consumer Lag.
+    - [x] Add Micrometer metrics for:
+      - [x] Cache Hits/Misses.
+      - [x] DB Read Latency.
+      - [x] REST Request Latency.
+      - [x] Kafka Consumer Lag.
 
 11) Integration Testing
     - [x] Add integration tests spinning up the full context (H2/Postgres + Kafka).
     - [x] Verify the flow: Update via Kafka -> Check via REST.
 
 12) Documentation
-    - [ ] Update README with instructions on how to run the simulator and view metrics.
+    - [x] Update README with instructions on how to run the simulator and view metrics.
