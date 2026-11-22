@@ -3,9 +3,13 @@ package com.example.availability.simulator.controller;
 import com.example.availability.simulator.availability.Availability;
 import com.example.availability.simulator.availability.FlightDateKey;
 import com.example.availability.simulator.service.AvailabilityService;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -26,6 +30,14 @@ class AvailabilityControllerTest {
 
     @MockitoBean
     private AvailabilityService availabilityService;
+
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        public MeterRegistry meterRegistry() {
+            return new SimpleMeterRegistry();
+        }
+    }
 
     @Test
     void getAvailability_returnsOk_whenFound() throws Exception {

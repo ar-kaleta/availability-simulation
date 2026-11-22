@@ -2,6 +2,9 @@ package com.example.availability.simulator.availability;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -18,28 +21,49 @@ public class AvailabilityCache {
 
     private final Cache<FlightDateKey, Availability> readCache;
 
-    public AvailabilityCache() {
+    private final Counter cacheHits;
+    private final Counter cacheMisses;
+    private final Timer cacheReadTimer;
+
+    public AvailabilityCache(MeterRegistry meterRegistry) {
         this.readCache = Caffeine.newBuilder()
                 .maximumSize(10_000)
                 .expireAfterWrite(Duration.ofMinutes(10))
                 .build();
+        this.cacheHits = Counter.builder("availability.cache.hits")
+                .description("Cache hit count")
+                .register(meterRegistry);
+        this.cacheMisses = Counter.builder("availability.cache.misses")
+                .description("Cache miss count")
+                .register(meterRegistry);
+        this.cacheReadTimer = Timer.builder("availability.cache.read")
+                .description("Cache read latency")
+                .register(meterRegistry);
     }
 
     public Optional<Availability> getAvailability(FlightDateKey key) {
-        // Try read cache first
-        Availability cached = readCache.getIfPresent(key);
-        if (cached != null) {
-            return Optional.of(cached);
-        }
+        long start = System.nanoTime();
+        try {
+            // Try read cache first
+            Availability cached = readCache.getIfPresent(key);
+            if (cached != null) {
+                cacheHits.increment();
+                return Optional.of(cached);
+            }
 
-        // Fallback to authoritative store
-        CachedState state = store.get(key);
-        if (state != null) {
-            readCache.put(key, state.availability());
-            return Optional.of(state.availability());
+            // Fallback to authoritative store
+            CachedState state = store.get(key);
+            if (state != null) {
+                readCache.put(key, state.availability());
+                cacheHits.increment();
+                return Optional.of(state.availability());
+            }
+
+            cacheMisses.increment();
+            return Optional.empty();
+        } finally {
+            cacheReadTimer.record(System.nanoTime() - start, java.util.concurrent.TimeUnit.NANOSECONDS);
         }
-        
-        return Optional.empty();
     }
 
     public void updateAvailability(AvailabilityEvent event) {

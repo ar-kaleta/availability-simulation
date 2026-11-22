@@ -5,9 +5,11 @@ import com.example.availability.simulator.availability.AvailabilityCache;
 import com.example.availability.simulator.availability.FlightDateKey;
 import com.example.availability.simulator.data.Flight;
 import com.example.availability.simulator.data.FlightRepository;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -27,8 +29,14 @@ class AvailabilityServiceTest {
     @Mock
     private FlightRepository flightRepository;
 
-    @InjectMocks
+    private MeterRegistry meterRegistry;
     private AvailabilityService availabilityService;
+
+    @BeforeEach
+    void setUp() {
+        meterRegistry = new SimpleMeterRegistry();
+        availabilityService = new AvailabilityService(availabilityCache, flightRepository, meterRegistry);
+    }
 
     @Test
     void getAvailability_returnsCachedValue_whenPresentInCache() {

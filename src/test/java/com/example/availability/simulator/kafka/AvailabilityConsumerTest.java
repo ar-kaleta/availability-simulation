@@ -7,6 +7,7 @@ import com.example.availability.simulator.data.Flight;
 import com.example.availability.simulator.data.FlightRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,7 +37,7 @@ class AvailabilityConsumerTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
-        consumer = new AvailabilityConsumer(flightRepository, availabilityCache, objectMapper);
+        consumer = new AvailabilityConsumer(flightRepository, availabilityCache, objectMapper, new SimpleMeterRegistry());
     }
 
     @Test

@@ -3,6 +3,8 @@ package com.example.availability.simulator.controller;
 import com.example.availability.simulator.availability.Availability;
 import com.example.availability.simulator.availability.FlightDateKey;
 import com.example.availability.simulator.service.AvailabilityService;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,9 +17,13 @@ import java.time.LocalDateTime;
 public class AvailabilityController {
 
     private final AvailabilityService availabilityService;
+    private final Timer restRequestTimer;
 
-    public AvailabilityController(AvailabilityService availabilityService) {
+    public AvailabilityController(AvailabilityService availabilityService, MeterRegistry meterRegistry) {
         this.availabilityService = availabilityService;
+        this.restRequestTimer = Timer.builder("availability.rest.request")
+                .description("REST request latency")
+                .register(meterRegistry);
     }
 
     @GetMapping("/availability")
@@ -30,9 +36,14 @@ public class AvailabilityController {
     ) {
         FlightDateKey key = new FlightDateKey(flightNumber, origin, destination, departureDateTime, arrivalDateTime);
 
-        return availabilityService.getAvailability(key)
-                .map(Availability::availabilityString)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        long start = System.nanoTime();
+        try {
+            return availabilityService.getAvailability(key)
+                    .map(Availability::availabilityString)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } finally {
+            restRequestTimer.record(System.nanoTime() - start, java.util.concurrent.TimeUnit.NANOSECONDS);
+        }
     }
 }

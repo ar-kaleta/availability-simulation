@@ -1,5 +1,6 @@
 package com.example.availability.simulator.availability;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -16,7 +17,7 @@ class AvailabilityCacheTest {
 
     @BeforeEach
     void setUp() {
-        cache = new AvailabilityCache();
+        cache = new AvailabilityCache(new SimpleMeterRegistry());
         LocalDateTime dep = LocalDateTime.now();
         LocalDateTime arr = dep.plusHours(2);
         key = new FlightDateKey(100, "JFK", "LHR", dep, arr);

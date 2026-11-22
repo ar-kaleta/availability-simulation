@@ -6,6 +6,8 @@ import com.example.availability.simulator.data.Flight;
 import com.example.availability.simulator.data.FlightRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -22,33 +24,42 @@ public class AvailabilityConsumer {
     private final FlightRepository flightRepository;
     private final AvailabilityCache availabilityCache;
     private final ObjectMapper objectMapper;
+    private final Timer kafkaConsumerTimer;
 
-    public AvailabilityConsumer(FlightRepository flightRepository, AvailabilityCache availabilityCache, ObjectMapper objectMapper) {
+    public AvailabilityConsumer(FlightRepository flightRepository,
+                               AvailabilityCache availabilityCache,
+                               ObjectMapper objectMapper,
+                               MeterRegistry meterRegistry) {
         this.flightRepository = flightRepository;
         this.availabilityCache = availabilityCache;
         this.objectMapper = objectMapper;
+        this.kafkaConsumerTimer = Timer.builder("availability.kafka.consumer.process")
+                .description("Kafka consumer processing latency")
+                .register(meterRegistry);
     }
 
     @KafkaListener(topics = "availability-updates", groupId = "availability-simulator-group")
     @Transactional
     public void handleAvailabilityEvent(String message) {
-        try {
-            log.debug("Received availability update: {}", message);
-            AvailabilityEvent event = objectMapper.readValue(message, AvailabilityEvent.class);
+        kafkaConsumerTimer.record(() -> {
+            try {
+                log.debug("Received availability update: {}", message);
+                AvailabilityEvent event = objectMapper.readValue(message, AvailabilityEvent.class);
 
-            // 1. Update Database (System of Record)
-            updateDatabase(event);
+                // 1. Update Database (System of Record)
+                updateDatabase(event);
 
-            // 2. Update Cache (Near Real-Time)
-            availabilityCache.updateAvailability(event);
+                // 2. Update Cache (Near Real-Time)
+                availabilityCache.updateAvailability(event);
 
-        } catch (JsonProcessingException e) {
-            log.error("Failed to parse availability event: {}", message, e);
-            // In a real system, send to DLQ
-        } catch (Exception e) {
-            log.error("Error processing availability event", e);
-            throw e; // Trigger retry/DLQ
-        }
+            } catch (JsonProcessingException e) {
+                log.error("Failed to parse availability event: {}", message, e);
+                // In a real system, send to DLQ
+            } catch (Exception e) {
+                log.error("Error processing availability event", e);
+                throw e; // Trigger retry/DLQ
+            }
+        });
     }
 
     private void updateDatabase(AvailabilityEvent event) {
